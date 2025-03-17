@@ -1,6 +1,6 @@
 import { Flamenco } from "next/font/google";
 
-const baseURL = "demo.magic-portfolio.com";
+const baseURL = "matteobalasco.vercel.app";
 
 const routes = {
   "/": true,
