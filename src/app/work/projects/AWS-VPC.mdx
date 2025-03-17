@@ -1,0 +1,377 @@
+---
+title: "AWS VPC"
+publishedAt: "2025-03-18"
+summary: "This VPC project is built entirely with Terraform and follows AWS best practices in implementing a VPC that's useful for AWS deployment."
+images:
+  - "/images/projects/AWS-VPC/cover-01.png"
+team:
+  - name: "Matteo Balasco"
+    role: "Security Engineer"
+    avatar: "/images/avatar.jpg"
+    linkedIn: "https://www.linkedin.com/in/mttbal/"
+---
+## Project Overview
+
+The VPC project, built entirely with Terraform, follows AWS best practices for implementing a VPC suitable for deploying AWS resources. 
+The goal is to have an out-of-the-box infrastructure to deploy compute resources while considering the Well-Architected Framework.
+
+## Core Components and Their Purpose
+
+### 1. VPC Configuration
+- **CIDR Block**: 172.31.0.0/16 (65,536 available IP addresses)
+- **DNS Support**: Enabled for AWS internal hostname resolution
+- **DNS Hostnames**: Enabled for automatic hostname assignment
+- **Purpose**: Creates an isolated network environment with complete control over the networking components
+
+### 2. Network Segmentation
+#### Private Subnet (172.31.32.0/20)
+- Located in eu-west-1b
+- No auto-assign public IP
+- **Purpose**: Hosts internal resources requiring enhanced security
+
+#### Public Subnet (172.31.0.0/20)
+- Located in eu-west-1b
+- Auto-assigns public IPs
+- **Purpose**: Hosts internet-facing resources and NAT Gateway
+
+### 3. Internet Connectivity Components
+#### Internet Gateway (IGW)
+- **Purpose**: Enables communication between VPC and the internet for public subnet resources
+
+#### NAT Gateway
+- Deployed in the public subnet
+- Uses Elastic IP for consistent addressing
+- **Purpose**: Allows private subnet resources to access the internet while remaining secure
+
+### 4. Routing Configuration
+#### Public Route Table
+- Routes internet-bound traffic (0.0.0.0/0) through IGW
+- **Purpose**: Enables direct internet access for public subnet resources
+
+#### Private Route Table
+- Routes internet-bound traffic through NAT Gateway
+- **Purpose**: Enables secure outbound internet access for private subnet resources
+
+### 5. Security Measures
+#### Security Group
+- Allows HTTPS (443) traffic within VPC
+- Permits all outbound traffic
+- **Purpose**: Implements network-level security controls
+
+### 6. Systems Manager Integration
+#### VPC Endpoints
+1. SSM Endpoint
+2. EC2 Messages Endpoint
+3. SSM Messages Endpoint
+- **Purpose**: Enables secure AWS Systems Manager access without internet exposure. This is the most secure way, for example, to access EC2 instances.
+because it will not exposure any port
+
+## Technical Implementation Benefits
+
+1. **Security**
+   - Network isolation through subnet segregation
+   - Controlled internet access via NAT Gateway
+   - Fine-grained traffic control with security groups
+   - Secure systems management through VPC endpoints
+
+2. **Scalability**
+   - Flexible CIDR ranges for future expansion
+   - Modular infrastructure design
+   - Easy replication across regions
+
+3. **Maintainability**
+   - Infrastructure as Code using Terraform
+   - Consistent tagging strategy
+   - Documented component relationships
+
+4. **Cost Optimization**
+   - Strategic use of NAT Gateway
+   - Efficient IP address allocation
+   - Minimal required components
+
+## Deployment and Management
+
+The entire infrastructure is managed through Terraform, providing:
+- Version control integration
+- Automated deployment capabilities
+- Infrastructure state management
+- Easy updates and modifications
+
+## Flow
+
+EC2 accessing internet
+![AWS-VPC](/images/projects/AWS-VPC/cover-02.png)
+Client accessing EC2 VM
+![AWS-VPC](/images/projects/AWS-VPC/cover-03.png)
+
+
+## Terraform
+### How to deploy it on Mac
+- Terraform installation, inizialization and configuration apply
+
+
+<CodeBlock className="my-24"
+    compact
+    codeInstances={[
+        {
+            code: `
+brew tap hashicorp/tap
+            `,
+            label: 'Terraform Installation',
+            language: 'bash'
+        },
+        {
+            code: `
+brew install hashicorp/tap/terraform
+            `,
+            label: 'Install Terraform',
+            language: 'bash'
+        },
+        {
+            code: `
+terraform -version
+            `,
+            label: 'Verify Installation',
+            language: 'bash'
+        },
+        {
+            code: `
+cd /path/to/your/terraform/project
+            `,
+            label: 'Navigate to Project Directory',
+            language: 'bash'
+        },
+        {
+            code: `
+terraform init
+            `,
+            label: 'Initialize Terraform',
+            language: 'bash'
+        },
+        {
+            code: `
+terraform validate
+            `,
+            label: 'Validate Configuration',
+            language: 'bash'
+        },
+        {
+            code: `
+terraform plan
+            `,
+            label: 'Preview Changes',
+            language: 'bash'
+        },
+        {
+            code: `
+terraform apply
+            `,
+            label: 'Apply Configuration',
+            language: 'bash'
+        }
+    ]}
+    copyButton
+/>
+
+
+### Terraform code
+AWS infra Deployment
+
+<CodeBlock className="my-24"
+    compact
+    codeInstances={[
+        {
+            code: `# VPC
+resource "aws_vpc" "Protect_Respond" {
+  cidr_block           = "172.31.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name      = "Protect-Respond"
+    Terraform = "deployed"
+  }
+}
+
+# Private Subnet
+resource "aws_subnet" "Protect_Respond" {
+  vpc_id                  = aws_vpc.Protect_Respond.id
+  cidr_block              = "172.31.32.0/20"
+  availability_zone       = "eu-west-1b"
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name      = "Protect-Respond-Private"
+    Terraform = "deployed"
+  }
+}
+
+# Public Subnet
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.Protect_Respond.id
+  cidr_block              = "172.31.0.0/20"
+  availability_zone       = "eu-west-1b"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name      = "Protect-Respond-Public"
+    Terraform = "deployed"
+  }
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "IGW_Protect_Respond" {
+  vpc_id = aws_vpc.Protect_Respond.id
+
+  tags = {
+    Name      = "IGW_Protect-Respond"
+    Terraform = "deployed"
+  }
+}
+
+# Public Route Table
+resource "aws_route_table" "Internet_Protect_Respond" {
+  vpc_id = aws_vpc.Protect_Respond.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.IGW_Protect_Respond.id
+  }
+
+  tags = {
+    Name      = "Public-RT-Protect-Respond"
+    Terraform = "deployed"
+  }
+}
+
+# Public Route Table Association
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.Internet_Protect_Respond.id
+}
+
+# EIP for NAT Gateway
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  tags = {
+    Name      = "NAT-Gateway-IP"
+    Terraform = "deployed"
+  }
+}
+
+# NAT Gateway
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public.id
+
+  tags = {
+    Name      = "NAT-Gateway"
+    Terraform = "deployed"
+  }
+}
+
+# Private Route Table
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.Protect_Respond.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = {
+    Name      = "Private-RT-Protect-Respond"
+    Terraform = "deployed"
+  }
+}
+
+# Private Route Table Association
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.Protect_Respond.id
+  route_table_id = aws_route_table.private.id
+}
+
+# Security Group
+resource "aws_security_group" "SG_Protect_Respond" {
+  vpc_id = aws_vpc.Protect_Respond.id
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["172.31.0.0/16"]
+    description = "Allow HTTPS from within VPC"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
+  }
+
+  tags = {
+    Name      = "SG_Protect-Respond"
+    Terraform = "deployed"
+  }
+}
+
+# VPC Endpoint for SSM
+resource "aws_vpc_endpoint" "ssm" {
+  vpc_id              = aws_vpc.Protect_Respond.id
+  service_name        = "com.amazonaws.eu-west-1.ssm"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.Protect_Respond.id]
+  security_group_ids  = [aws_security_group.SG_Protect_Respond.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name      = "SSM-Endpoint"
+    Terraform = "deployed"
+  }
+}
+
+# VPC Endpoint for EC2 Messages
+resource "aws_vpc_endpoint" "ec2messages" {
+  vpc_id              = aws_vpc.Protect_Respond.id
+  service_name        = "com.amazonaws.eu-west-1.ec2messages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.Protect_Respond.id]
+  security_group_ids  = [aws_security_group.SG_Protect_Respond.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name      = "EC2Messages-Endpoint"
+    Terraform = "deployed"
+  }
+}
+
+# VPC Endpoint for SSM Messages
+resource "aws_vpc_endpoint" "ssmmessages" {
+  vpc_id              = aws_vpc.Protect_Respond.id
+  service_name        = "com.amazonaws.eu-west-1.ssmmessages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.Protect_Respond.id]
+  security_group_ids  = [aws_security_group.SG_Protect_Respond.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name      = "SSMMessages-Endpoint"
+    Terraform = "deployed"
+  }
+}`,
+            label: 'Terraform',
+            language: 'hcl'
+        },
+    ]}
+    copyButton
+/>
+
+
+## Possible Enhancements based on use cases
+
+- Multi-AZ deployment for high availability
+- Additional security layers (Network ACLs, WAF)
+- VPC Flow Logs for network monitoring
+- Transit Gateway integration for multi-VPC connectivity

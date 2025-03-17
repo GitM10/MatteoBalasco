@@ -1,0 +1,184 @@
+---
+title: "Enterprise Network Deployment"
+publishedAt: "2025-03-15"
+summary: "This is one of my projects that focuses on designing and deploying a high-performance, secure, and scalable network infrastructure."
+images:
+  - "/images/projects/Enterprise-Network-Deployment/cover-01.png"
+team:
+  - name: "Matteo Balasco"
+    role: "Security Engineer"
+    avatar: "/images/avatar.jpg"
+    linkedIn: "https://www.linkedin.com/in/mttbal/"
+---
+
+
+## Overview
+
+This project focuses on designing and deploying a high-performance, secure, and scalable network infrastructure. 
+The architecture follows a layered design approach, ensuring redundancy, 
+high availability, and optimal traffic flow for enterprise workloads.
+
+A key design decision was to position the firewalls out-of-band rather than inline. Since the Palo Alto firewalls 220 are not 10 Gbps capable,
+placing them inline would create a bottleneck for high-performance VLANs. To avoid this, the firewalls are connected externally with 
+traffic dynamically redirected inbound and outbound based on routing policies for specific VLANs. This ensures:
+- ✅ Unrestricted high-speed internal traffic for specific VLANs.
+- ✅ Selective security enforcement based on traffic classification.
+- ✅ Optimized network throughput while maintaining security controls.
+
+## Key Features
+
+1. **ISP & Routing Layer**
+- ISP Uplink: 10G Down / 3G Up
+- Router: Mikrotik CCR2116-12G-4S+
+Core routing and traffic management are connected to firewalls and high-performance distribution switches.
+It also manages inter-VLAN traffic and the stateful firewall, where every connection is checked before entering or leaving the network.
+
+2. **Firewall Layer (Security Perimeter)**
+- Active-Active Firewall Setup for fw01-panos-mi (Palo Alto) and fw02-panos-mi (Palo Alto)
+Provides network segmentation, traffic filtering, and advanced security policies. Used only to filter traffic for specific VLANs
+
+3. **Distribution Layer**
+High-Performance Switching Backbone with Mikrotik CRS326-24S+2Q+RM
+- Handles high-speed interconnects and backbone traffic distribution (HA). 
+
+4. **Access Layer**
+Ubiquiti Enterprise 48 PoE Switches are used as access ports for connected devices. They manage up to 2.5 Gbps per port
+- Each Ubiquiti switch is connected to both distribution switches
+
+5. **Controller Layer**
+Ubiquiti Dream Machine (UDM)
+Centralized network management for all UniFi/Ubiquiti devices in the network
+- It is connected with a backup link to the router for high availability
+
+
+
+6. **Logical Groups of Endpoints**
+- Enterprise Panels & Biometric Systems
+- Hypervisors, servers, and high-performance computing (HPC)
+- Wi-Fi and Workstations
+
+
+## Network Design & Redundancy
+High-Availability & Failover Mechanisms
+- ✅ Redundant Uplinks: ISP connection with failover support.
+- ✅ Firewall High-Availability (HA): Active-Active Palo Alto setup.
+- ✅ Dual Core Switching Fabric: High-speed qSPF+ links (HA)
+- ✅ Multiple Edge Switches: Ensuring localized redundancy.
+- ✅ Auto-Failover Routing: Intelligent traffic rerouting during failures.
+
+Optimized Traffic Routing
+
+🚀 Inter-VLAN Routing: Efficient traffic segmentation.
+
+🚀 BGP Routing Strategies: Dynamic routing for scalability.
+
+🚀 Load Balancing: Traffic evenly distributed for high performance.
+
+
+## Mermaid code for the Graph 
+For everyone who doesn’t know, Mermaid is a powerful, text-based diagramming tool that allows users to create flowcharts, sequence diagrams, Gantt charts,
+and more using a simple markdown-like syntax. It’s especially useful for network engineers, developers, and IT professionals who need to visualize
+complex architectures without using heavyweight design software.
+In this project, Mermaid was used to represent the network architecture, illustrating the relationships between different layers, devices, and
+connections in an easy-to-understand format.
+By using Mermaid, we can generate dynamic and scalable diagrams directly from text, making it easier to update and maintain visual documentation.
+- You can use the free Mermaid Live Editor available at [Mermaid.js Live Editor](https://mermaid.js.org/) to generate, modify, and preview diagrams in real time.
+
+
+![Enterprise-Network-Deployment](/images/projects/Enterprise-Network-Deployment/cover-02.png)
+
+<CodeBlock className="my-24"
+    compact
+    codeInstances={[
+        {
+            code: `---
+config:
+  layout: fixed
+---
+flowchart TD
+ subgraph subGraph0["ISP Layer"]
+        ISP3("10G down / 3G up")
+  end
+ subgraph subGraph1["Routing Layer"]
+        Router("Mikrotik CCR2116-12G-4S+ 172.16.16.1")
+  end
+ subgraph subGraph2["Firewall Layer"]
+        FW1["fw01-panos-mi Palo Alto"]
+        FW2["fw02-panos-mi Palo Alto"]
+  end
+ subgraph subGraph3["Distribution Layer"]
+        HighPerfSwitch1["Mikrotik CRS326-24S+2Q+RM<br>Distribution Switch 1 172.16.16.2"]
+        HighPerfSwitch2["Mikrotik CRS326-24S+2Q+RM<br>Distribution Switch 2 172.16.16.3"]
+  end
+ subgraph subGraph4["Access Layer"]
+        sw1["Ubiquiti Enterprise 48 PoE<br>Access Switch 1 172.16.20.2"]
+        sw2["Ubiquiti Enterprise 48 PoE<br>Access Switch 2 172.16.20.3"]
+        sw3["Ubiquiti Enterprise 48 PoE<br>Access Switch 3 172.16.20.4"]
+        sw4["Ubiquiti Enterprise 48 PoE<br>Access Switch 4 172.16.20.5"]
+        sw5["Ubiquiti Enterprise 48 PoE<br>Access Switch 5 172.16.20.6"]
+  end
+ subgraph subGraph5["Controller Layer"]
+        cont["Ubiquiti Dream Machine<br>172.16.20.1"]
+  end
+ subgraph Endpoints["Endpoints"]
+        e1["Panels, Fingerprint &amp; <br> Hypervisor &amp; Wifi"]
+        e2["Wi-Fi, Generic Workstation"]
+        e3["Generic Workstations 3"]
+        e4["Generic Workstations 2"]
+        e5["Generic Workstations 4"]
+  end
+    ISP3 -- 10G --> Router
+    Router -- SPF+2 to 24 --> HighPerfSwitch1
+    Router -- SPF+3 to 24 --> HighPerfSwitch2
+    Router -- eth8 to eth2 ae1 --> FW1
+    Router -- eth7 to eth1 ae1 --> FW1
+    Router -- eth2 to eth1 ae1 --> FW2
+    Router -- eth3 to eth2 ae1 --> FW2
+    FW1 -- eth3 to eth9 ae2 --> Router
+    FW1 -- eth4 to eth10 ae2 --> Router
+    FW1 -- MGMT to eth11 --> Router
+    FW2 -- eth3 to eth4 ae2 --> Router
+    FW2 -- eth4 to eth5 ae2 --> Router
+    FW2 -- MGMT to eth6 --> Router
+    HighPerfSwitch1 == "HA qSPF+1-1 to qSPF+1-1" ==> HighPerfSwitch2
+    HighPerfSwitch2 == "HA qSPF+2-1 to qSPF+2-1" ==> HighPerfSwitch1
+    HighPerfSwitch1 -- SPF+1 to 49 --> sw1
+    HighPerfSwitch1 -- SPF+2 to 49 --> sw2
+    HighPerfSwitch1 -- SPF+9 to 49 --> sw3
+    HighPerfSwitch1 -- SPF+10 to 49 --> sw4
+    HighPerfSwitch1 -- SPF+15 to 49 --> sw5
+    HighPerfSwitch2 -- SPF+17 to 10 Trunk --> cont
+    HighPerfSwitch2 -- SPF+1 to 51 --> sw1
+    HighPerfSwitch2 -- SPF+2 to 51 --> sw2
+    HighPerfSwitch2 -- SPF+9 to 51 --> sw3
+    HighPerfSwitch2 -- SPF+10 to 51 --> sw4
+    HighPerfSwitch2 -- SPF+15 to 51 --> sw5
+    cont -- eth7 to eth46 Trunk Backup --> sw1
+    Router -- eth1 to eth8 Internet Backup --> cont
+    cont -- eth9 to eth48 Internet --> sw1
+    sw1 -. "2.5G" .-> e1
+    sw2 -. "2.5G" .-> e2
+    sw3 -. "2.5G" .-> e3
+    sw4 -- "2.5G" --> e4
+    sw5 -- "2.5G" --> e5
+    style ISP3 fill:#99cc99, stroke:#000, stroke-width:2px
+    style Router fill:#ffcc66, stroke:#000, stroke-width:2px
+    style FW1 fill:#ff9999, stroke:#000, stroke-width:2px
+    style FW2 fill:#ff9999, stroke:#000, stroke-width:2px
+    style HighPerfSwitch1 fill:#66ccff, stroke:#000, stroke-width:2px
+    style HighPerfSwitch2 fill:#66ccff, stroke:#000, stroke-width:2px
+    style cont fill:#ff9999, stroke:#000, stroke-width:2px`,
+            label: 'Mermaid',
+            language: 'mermaid'
+        },
+    ]}
+    copyButton
+/>
+
+## Outcome
+The deployment has improved network reliability, security, and scalability while reducing manual configuration overhead.
+
+P.S. The project also included a WireGuard VPN site-to-site connection with another Mikrotik router, utilizing iBGP for route distribution
+but that’s a story for another time
+
+---
