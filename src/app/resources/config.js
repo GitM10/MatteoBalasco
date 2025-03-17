@@ -14,7 +14,7 @@ const routes = {
 // Set password in the .env file
 const protectedRoutes = {
   "/work/Enterprise-Network-Deployment": true,
-  "/work/AWS-VPC": true,
+  "/work/AWS-VPC": false,
 };
 
 const style = {
