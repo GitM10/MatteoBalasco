@@ -187,15 +187,15 @@ const about = {
     title: "Studies",
     institutions: [
       {
-        name: "Cybersecurity Academy",
+        name: "Cybersecurity Academy 🛡️",
         description: <>Studied cybersecurity at Geeks Academy Europe</>,
       },
       {
-        name: "Sardis 🇨🇦",
+        name: "Sardis, British Columbia 🇨🇦",
         description: <>High School Diploma in Networking, Network Security, Cyber security </>,
       },
       {
-        name: "Liceo Statale Carlo Tenca",
+        name: "Liceo Statale Carlo Tenca 🇮🇹",
         description: <>High School Diploma</>,
       },
     ],
