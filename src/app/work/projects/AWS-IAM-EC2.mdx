@@ -1,0 +1,222 @@
+---
+title: "AWS IAM & EC2"
+publishedAt: "2025-03-22"
+summary: "AWS IAM & EC2 deployed with Terraform"
+images:
+  - "/images/projects/AWS-IAM-EC2/cover-01.png"
+  - "/images/projects/AWS-IAM-EC2/cover-03.png"
+team:
+  - name: "Matteo Balasco"
+    role: "Security Engineer"
+    avatar: "/images/avatar.jpg"
+    linkedIn: "https://www.linkedin.com/in/mttbal/"
+---
+## Requirement
+-  AWS CLI installed and configured
+
+On macOS, I use [Leapp](https://www.leapp.cloud/download/desktop-app). It's a DevSecOps access platform that enhances the cloud experience by allowing you to select what you want to access via a graphical user interface (GUI).
+
+## Overview and Basic Concept of IAM
+IAM (Identity and Access Management) manages both authentication and authorization
+
+Principal: Refers to any entity that can make requests for actions or resources in AWS. This includes IAM users, IAM roles, users from an identity provider (IdP), or AWS services (e.g., a Lambda function accessing S3).
+- **IAM User**: An entity that can interact with AWS services. IAM users can access the AWS Management Console (web UI) and use access keys with the AWS CLI or SDKs. SDKs are libraries that allow developers to integrate AWS services directly into their applications.
+- **IAM Role**: An identity that grants specific permissions to users or services, enabling them to perform actions on AWS resources. Roles are crucial for implementing the principle of least privilege, ensuring that entities have only the permissions they need. Roles can be assumed for a session duration ranging from a minimum of 15 minutes to a maximum of 36 hours.
+
+
+**Assume Role in AWS IAM**
+
+The "Assume Role" feature in AWS Identity and Access Management (IAM) allows an entity (such as a user, application, or service) to temporarily take on the permissions of another IAM role. This is particularly useful for granting access to resources across different AWS accounts or for delegating limited permissions to users or services without sharing long-term credentials.
+
+![Assume-Role](/images/projects/AWS-IAM-EC2/cover-02.png)
+
+
+
+## IAM permissions deployed for Access EC2 using SSM and permit the vm to access a S3 BUCKET
+ Remember to change 
+1. arn:aws:s3:::s3-INSERT-YOUR-BUCKET
+2. arn:aws:s3:::s3-INSERT-YOUR-BUCKET/*
+
+with your s3 bucket arn. Both are needed, the first give access to the bucket while the second give access to all the content inside the bucket.
+
+<CodeBlock className="my-24"
+    compact
+    codeInstances={[
+        {
+            code: `# Create IAM role
+resource "aws_iam_role" "protect_respond_role" {
+  name = "Protect-Respond"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name      = "Protect-Respond"
+    Terraform = "deployed"
+  }
+}
+
+# Attach SSM Managed Policy
+resource "aws_iam_role_policy_attachment" "ssm_policy" {
+  role       = aws_iam_role.protect_respond_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# Create and attach s3ReadOnly custom policy (list & download object)
+resource "aws_iam_policy" "s3_readonly_policy" {
+  name = "s3ReadOnly_Protect-Respond"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = "arn:aws:s3:::s3-INSERT-YOUR-BUCKET"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "s3:GetObject"
+        Resource = "arn:aws:s3:::s3-INSERT-YOUR-BUCKET/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "s3_readonly_attachment" {
+  role       = aws_iam_role.protect_respond_role.name
+  policy_arn = aws_iam_policy.s3_readonly_policy.arn
+}
+
+# Create Protect-Respond Inline Policy for SSM
+resource "aws_iam_role_policy" "protect_respond_inline" {
+  name = "Protect-Respond"
+  role = aws_iam_role.protect_respond_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "s3:GetObject"
+        Resource = [
+          "arn:aws:s3:::aws-ssm-eu-west-1/*",
+          "arn:aws:s3:::aws-windows-downloads-eu-west-1/*",
+          "arn:aws:s3:::amazon-ssm-eu-west-1/*",
+          "arn:aws:s3:::amazon-ssm-packages-eu-west-1/*",
+          "arn:aws:s3:::eu-west-1-birdwatcher-prod/*",
+          "arn:aws:s3:::aws-ssm-distributor-file-eu-west-1/*",
+          "arn:aws:s3:::aws-ssm-document-attachments-eu-west-1/*",
+          "arn:aws:s3:::patch-baseline-snapshot-eu-west-1/*"
+        ]
+      }
+    ]
+  })
+}
+
+# INSTANCE PROFILE
+# Instance profiles, which serve as 'containers' for IAM roles, are required because EC2 instances cannot directly assume IAM roles. Instead, they must use an instance profile as an intermediary.
+resource "aws_iam_instance_profile" "protect_respond_profile" {
+  name = "Protect-Respond"
+  role = aws_iam_role.protect_respond_role.name
+}
+            `,
+            label: 'IAM Role and Policies Configuration',
+            language: 'hcl'
+        }
+    ]}
+    copyButton
+/>
+
+
+
+## Deploying an EC2 Instance using Terraform
+I recommend reviewing the previous [article](https://matteobalasco.it/work/AWS-VPC#project-overview) before  proceding.
+
+In fact, I covered everything from the installation of [Terraform](https://matteobalasco.it/work/AWS-VPC#how-to-deploy-it-on-mac) to the essential requirements needed to deploy the instance, 
+including VPC, subnet, and security group
+
+## Below is the Terraform configuration used to deploy the EC2 instance:
+- Deployed in a private subnet
+- IAM permission for ssm access to the instance
+- AMI for Irland region
+- An automatic command is executed to install AWS CLI inside the EC2 instance (as it is not always installed by default)
+
+
+<CodeBlock className="my-24"
+    compact
+    codeInstances={[
+        {
+            code: `
+resource "aws_instance" "testing-vm" {
+  ami           = "ami-0694d931cee176e7d" # Ubuntu
+  instance_type = "t2.micro"
+
+  subnet_id                   = aws_subnet.Protect_Respond.id
+  vpc_security_group_ids      = [aws_security_group.SG_Protect_Respond.id]
+  associate_public_ip_address = false
+
+  # Add the IAM instance profile
+  iam_instance_profile = aws_iam_instance_profile.protect_respond_profile.name
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+
+  root_block_device {
+    volume_size           = 8
+    volume_type           = "gp3"
+    delete_on_termination = true
+    tags = {
+      Name      = "Root-Volume-Sandbox-CrowdStrike"
+      Terraform = "deployed"
+    }
+  }
+
+  tags = {
+    Name      = "testing-vm"
+    Terraform = "deployed"
+  }
+
+  # User data to install AWS CLI
+  user_data = <<-EOF
+              #!/bin/bash
+              # Check if AWS CLI is installed
+              if ! command -v aws &> /dev/null
+              then
+                  echo "AWS CLI not found. Installing..."
+
+                  # Update the system and install required dependencies
+                  apt-get update -y
+                  apt-get install -y unzip curl
+
+                  # Download and install AWS CLI v2
+                  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                  unzip awscliv2.zip
+                  sudo ./aws/install
+
+                  # Verify AWS CLI installation
+                  aws --version
+              else
+                  echo "AWS CLI is already installed."
+              fi
+              EOF
+}
+            `,
+            label: 'Terraform Configuration',
+            language: 'hcl'
+        }
+    ]}
+    copyButton
+/>

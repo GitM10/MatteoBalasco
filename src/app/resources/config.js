@@ -1,6 +1,6 @@
 import { Flamenco } from "next/font/google";
 
-const baseURL = "matteobalasco.vercel.app";
+const baseURL = "matteobalasco.it";
 
 const routes = {
   "/": true,
@@ -13,7 +13,7 @@ const routes = {
 // Enable password protection on selected routes
 // Set password in the .env file
 const protectedRoutes = {
-  "/work/Enterprise-Network-Deployment": true,
+  "/work/Enterprise-Network-Deployment": false,
   "/work/AWS-VPC": false,
 };
 

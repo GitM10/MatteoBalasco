@@ -10,6 +10,10 @@ team:
     avatar: "/images/avatar.jpg"
     linkedIn: "https://www.linkedin.com/in/mttbal/"
 ---
+## Requirement
+- AWS CLI installed and configured
+
+On macOS, I use [Leapp](https://www.leapp.cloud/download/desktop-app), a DevSecOps access platform that enhances the cloud experience by allowing users to select resources via a graphical user interface (GUI).
 ## Project Overview
 
 The VPC project, built entirely with Terraform, follows AWS best practices for implementing a VPC suitable for deploying AWS resources. 
@@ -21,7 +25,7 @@ The goal is to have an out-of-the-box infrastructure to deploy compute resources
 - **CIDR Block**: 172.31.0.0/16 (65,536 available IP addresses)
 - **DNS Support**: Enabled for AWS internal hostname resolution
 - **DNS Hostnames**: Enabled for automatic hostname assignment
-- **Purpose**: Creates an isolated network environment with complete control over the networking components
+- **Purpose**:  Provides an isolated network environment with full control over networking components
 
 ### 2. Network Segmentation
 #### Private Subnet (172.31.32.0/20)
@@ -63,7 +67,7 @@ The goal is to have an out-of-the-box infrastructure to deploy compute resources
 1. SSM Endpoint
 2. EC2 Messages Endpoint
 3. SSM Messages Endpoint
-- **Purpose**: Enables secure AWS Systems Manager access without internet exposure. This is the most secure way, for example, to access EC2 instances.
+- **Purpose**: Enables secure AWS Systems Manager access without internet exposure. This is the most secure way to access EC2 instances, as it does not expose any ports
 because it will not exposure any port
 
 ## Technical Implementation Benefits
@@ -71,7 +75,7 @@ because it will not exposure any port
 1. **Security**
    - Network isolation through subnet segregation
    - Controlled internet access via NAT Gateway
-   - Fine-grained traffic control with security groups
+   - Fine-grained traffic control with security groupsCreates
    - Secure systems management through VPC endpoints
 
 2. **Scalability**
@@ -107,7 +111,7 @@ Client accessing EC2 VM
 
 ## Terraform
 ### How to deploy it on Mac
-- Terraform installation, inizialization and configuration apply
+- Terraform installation, initialization, and configuration application
 
 
 <CodeBlock className="my-24"
@@ -173,6 +177,31 @@ terraform apply
     copyButton
 />
 
+**BEFORE** running the following command, create a file called `provider.tf` in the root directory of your project with this code:
+
+<CodeBlock className="my-24"
+    compact
+    codeInstances={[
+        {
+            code: `terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "eu-west-1" # Ireland region
+}
+            `,
+            label: 'Terraform Configuration',
+            language: 'hcl'
+        }
+    ]}
+    copyButton
+/>
 
 ### Terraform code
 AWS infra Deployment
@@ -369,7 +398,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
 />
 
 
-## Possible Enhancements based on use cases
+## Possible Enhancements Based on Use Cases
 
 - Multi-AZ deployment for high availability
 - Additional security layers (Network ACLs, WAF)
